@@ -1,2 +1,35 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.eggs/
+
+# Distribution / build files
+build/
+dist/
+*.egg
+*.whl
+
+# Virtual environment
+env/
+.env/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Editors and IDEs
+.idea/  # PyCharm
+.vscode/ # VS Code
+.DS_Store # macOS specific
+Thumbs.db # Windows specific
+
 .env
-.idea/
+.flaskenv
