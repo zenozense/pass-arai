@@ -1,4 +1,5 @@
 import tkinter as tk
+from database import zitttpymongo
 
 def center_window(window, width=450, height=230):
     """จัดหน้าต่างให้อยู่ตรงกลางจอ"""
@@ -14,12 +15,13 @@ def toggle_password(entry, var):
     entry.config(show="" if var.get() else "*")
 
 
-def login(username_var, password_var, msg_label, valid_users):
+def login(username_var, password_var, msg_label):
     """ตรวจสอบบัญชี"""
     username = username_var.get()
     password = password_var.get()
 
-    if valid_users.get(username) == password:
+    is_valid_user = zitttpymongo.is_exists_user(username,password)
+    if is_valid_user:
         msg_label.config(text="Login successful!", fg="green")
     else:
         msg_label.config(text="Incorrect username or password.", fg="red")
@@ -72,7 +74,7 @@ def create_login_ui(root):
 
     tk.Button(
         btn_row, text="Login", width=10,
-        command=lambda: login(username_var, password_var, msg_label, valid_users)
+        command=lambda: login(username_var, password_var, msg_label)
     ).pack(side="left", padx=6)
 
     tk.Button(
