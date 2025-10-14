@@ -17,7 +17,7 @@ collection_users = database_1["users"]
 
 #-----CRUD operation
 
-def create_register_user(username, password):
+def create_register_user(username, password,dateofbirth):
     ''' 
     save new register username with hashed password to MongoDB 
     '''
@@ -26,19 +26,21 @@ def create_register_user(username, password):
     # check whether already registered or not 
     if collection_users.find_one(query):
         print(f"❌ Username {username} already exists.")
-        return None
+        return False
+
     password_bytes = password.encode()
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password_bytes,salt)
-
     username_information = {
         "_id" : username,
         "password" : hashed_password,
+        "date of birth" : dateofbirth,
+        "created at": datetime.now(pytz.timezone("Asia/Bangkok"))
     }
 
     result = collection_users.insert_one(username_information)
     print(f"✅ User '{username}' registered successfully.")
-    return result.inserted_id
+    return True,result.inserted_id
 
 
 def is_exists_user(username,password):
@@ -76,7 +78,6 @@ def get_all_logs_for_user(username):
     pull logs's user then
     return list of dictionary that contain user's log informataion
     """
-
     query = {"username": username}
     
     # find and sorted the information by lasted date
@@ -87,7 +88,7 @@ def get_all_logs_for_user(username):
 
 def get_all_generated_passwords_for_user(username):
     '''
-    Finds all logs for a specific user and returns a list of their
+    Finds all generated password logs for a specific user and returns a list of their
     generated passwords only.
     '''
     query = {"username": username}
@@ -115,7 +116,6 @@ def update_note(log_id, new_note):
 
 def delete_specific_generated_password(log_id):
     ''' Delete a single generated password entry from the log collection using its ID. '''
-    
     try:
         # convert string_id to object_id
         query = {"_id": ObjectId(log_id)}

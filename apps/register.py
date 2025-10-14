@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from datetime import datetime
+from database import zitttpymongo
 
 # ---------- Window & center ----------
 root = tk.Tk()
@@ -71,9 +72,14 @@ def save():
     except ValueError:
         text.set("Invalid date. Use YYYY-MM-DD."); text_label.configure(foreground="#c62828"); return
 
-    # ผ่านทั้งหมด
-    text.set(f"Registered successfully: {u}")
-    text_label.configure(foreground="#2e7d32")
+    is_resgiter_successful = zitttpymongo.create_register_user(u,p1,dateofbirth)
+    if not is_resgiter_successful:
+        text.set(f"Username '{u}' already exists.")
+        text_label.configure(foreground="#c62828")
+    else:
+        # ผ่านทั้งหมด
+        text.set(f"Registered successfully")
+        text_label.configure(foreground="#2e7d32")
 
 
 
