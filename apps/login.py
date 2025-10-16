@@ -38,8 +38,6 @@ def create_login_ui(root):
     root.title("Pass Arai – Login")
     root.resizable(False, False)
 
-    valid_users = {"admin": "1234", "tian": "pscp"}  # mock data
-
     frame = tk.Frame(root)
     frame.pack(expand=True)
 
