@@ -17,7 +17,7 @@ collection_users = database_1["users"]
 
 #-----CRUD operation
 
-def create_register_user(username, password,dateofbirth):
+def create_register_user(username, password):
     ''' 
     save new register username with hashed password to MongoDB 
     '''
@@ -34,7 +34,6 @@ def create_register_user(username, password,dateofbirth):
     username_information = {
         "_id" : username,
         "password" : hashed_password,
-        "date of birth" : dateofbirth,
         "created at": datetime.now(pytz.timezone("Asia/Bangkok"))
     }
 

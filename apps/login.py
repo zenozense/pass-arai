@@ -1,19 +1,11 @@
 import tkinter as tk
 from database import zitttpymongo
-
-def center_window(window, width=450, height=230):
-    """จัดหน้าต่างให้อยู่ตรงกลางจอ"""
-    screen_w = window.winfo_screenwidth()
-    screen_h = window.winfo_screenheight()
-    x = (screen_w - width) // 2
-    y = (screen_h - height) // 2
-    window.geometry(f"{width}x{height}+{x}+{y}")
-
+from ui_utilities import center_window
+import subprocess
 
 def toggle_password(entry, var):
     """สลับการแสดงรหัสผ่าน"""
     entry.config(show="" if var.get() else "*")
-
 
 def login(username_var, password_var, msg_label):
     """ตรวจสอบบัญชี"""
@@ -27,15 +19,15 @@ def login(username_var, password_var, msg_label):
         msg_label.config(text="Incorrect username or password.", fg="red")
 
 
-def register():
+def open_register():
     """ไปยัง Register UI"""
-    print("555")
-
+    root.destroy()
+    subprocess.run(["python", "register.py"])
 
 def create_login_ui(root):
     """Main UI"""
     center_window(root, 450, 230)
-    root.title("Pass Arai – Login")
+    root.title("Login")
     root.resizable(False, False)
 
     frame = tk.Frame(root)
@@ -77,11 +69,11 @@ def create_login_ui(root):
 
     tk.Button(
         btn_row, text="Register", width=10,
-        command=register
+        command=open_register
     ).pack(side="left", padx=6)
 
     # Trigger ปุ่ม Login
-    root.bind("<Return>", lambda e: login(username_var, password_var, msg_label, valid_users))
+    root.bind("<Return>", lambda e: login(username_var, password_var, msg_label))
     username_entry.focus()
 
 
