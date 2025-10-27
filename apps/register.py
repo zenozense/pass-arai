@@ -8,7 +8,7 @@ import subprocess
 def create_register_ui():
     """Create Register UI"""
     root = tk.Tk()
-    root.title("Register")
+    root.title("ลงทะเบียน")
     center_window(root, 475, 250)
     root.resizable(False, False)
 
@@ -72,7 +72,7 @@ def create_register_ui():
     # ---------- Check Button ----------
     ttk.Checkbutton(
         card,
-        text="Show passwords",
+        text="แสดงรหัสผ่าน",
         variable=password_visible,
         command=toggle_show
     ).grid(row=row, column=1, sticky="w", padx=8); row += 1
@@ -84,10 +84,10 @@ def create_register_ui():
     # ---------- Buttons ----------
     btns = ttk.Frame(card)
     btns.grid(row=row, column=1, columnspan=2, pady=6)
-    ttk.Button(btns, text="Back", width=6, command=back).pack(side="left", padx=6)
+    ttk.Button(btns, text="ย้อนกลับ", width=6, command=back).pack(side="left", padx=6)
 
     btns.grid(row=row, column=0, columnspan=2, pady=0)
-    ttk.Button(btns, text="Save", width=6, command=save).pack(side="left", padx=0)
+    ttk.Button(btns, text="บันทึก", width=6, command=save).pack(side="left", padx=0)
 
     # ---------- Focus & Bind ----------
     card.grid_slaves(row=0, column=1)[0].focus()
