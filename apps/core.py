@@ -4,6 +4,21 @@ import secrets
 import string
 import math
 from datetime import datetime
+import sys
+from ui_utilities import center_window
+
+# ---------------- รับค่าจาก Subprocess ----------------
+if len(sys.argv) > 1:
+    current_user = sys.argv[1]
+else:
+    current_user = None
+
+# ---------------- Global Declare ----------------
+history_data = [
+    ("Abc123!@", "My email login", "2025-10-31 15:00"),
+    ("Xyz456$%", "School portal", "2025-10-30 18:45"),
+    ("Qwe789@@", "Bank account", "2025-10-29 09:30"),
+]
 
 # ---------------- Configs ----------------
 SYMBOLS = "!@#$%^&*+-_=?:/\\"
@@ -20,6 +35,7 @@ def build_pool(use_lower, use_upper, use_digits, use_symbols, avoid_amb):
         pool = "".join(ch for ch in pool if ch not in AMBITUOUS)
     return pool
 
+
 def generate_password(length, use_lower, use_upper, use_digits, use_symbols, avoid_amb):
     pool = build_pool(use_lower, use_upper, use_digits, use_symbols, avoid_amb)
     if not pool:
@@ -28,21 +44,30 @@ def generate_password(length, use_lower, use_upper, use_digits, use_symbols, avo
     chosen = [rng.choice(pool) for _ in range(length)]
     return "".join(chosen), pool
 
+
 def entropy_bits(length, pool_size):
     if length <= 0 or pool_size <= 1: return 0.0
     return length * math.log2(pool_size)
 
-def strength_label(bits):
-    if bits < 40: return "อ่อน (Weak)"
-    elif bits < 60: return "ปานกลาง (Medium)"
-    elif bits < 80: return "แข็งแรง (Strong)"
-    else: return "แข็งแกร่งมาก (Very Strong)"
 
-COMMON_PASSWORDS = {"123456","password","123456789","12345678","12345","111111","1234567","qwerty","abc123","password1","iloveyou","000000","admin"}
+def strength_label(bits):
+    if bits < 40:
+        return "อ่อน (Weak)"
+    elif bits < 60:
+        return "ปานกลาง (Medium)"
+    elif bits < 80:
+        return "แข็งแรง (Strong)"
+    else:
+        return "แข็งแกร่งมาก (Very Strong)"
+
+
+COMMON_PASSWORDS = {"123456", "password", "123456789", "12345678", "12345", "111111", "1234567", "qwerty", "abc123",
+                    "password1", "iloveyou", "000000", "admin"}
+
 
 def analyze_password(pw):
     if not pw:
-        return {"entropy":0.0, "pool_size":0, "label":"Empty", "issues":["รหัสว่าง"]}
+        return {"entropy": 0.0, "pool_size": 0, "label": "Empty", "issues": ["รหัสว่าง"]}
     sets = {"lower": any(c.islower() for c in pw),
             "upper": any(c.isupper() for c in pw),
             "digit": any(c.isdigit() for c in pw),
@@ -52,28 +77,30 @@ def analyze_password(pw):
     if sets["upper"]: pool_size += 26
     if sets["digit"]: pool_size += 10
     if sets["symbol"]: pool_size += len(SYMBOLS)
-    bits = entropy_bits(len(pw), pool_size if pool_size>0 else 1)
+    bits = entropy_bits(len(pw), pool_size if pool_size > 0 else 1)
     issues = []
     if len(pw) < 8: issues.append("ความยาวน้อยกว่า 8")
     if pw.lower() in COMMON_PASSWORDS: issues.append("รหัสผ่านนี้เป็นรหัสยอดนิยม")
-    if len(set(pw)) < max(3, len(pw)//2): issues.append("มีตัวอักษรซ้ำเยอะ")
+    if len(set(pw)) < max(3, len(pw) // 2): issues.append("มีตัวอักษรซ้ำเยอะ")
     recs = []
     if bits < 40: recs.append("เพิ่มความยาวหรือใช้ตัวอักษรหลากหลาย")
-    return {"entropy":bits, "pool_size":pool_size, "label":strength_label(bits), "issues":issues, "recs":recs}
+    return {"entropy": bits, "pool_size": pool_size, "label": strength_label(bits), "issues": issues, "recs": recs}
+
 
 # ---------------- UI ----------------
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Password Generator & Checker")
-        self.geometry("650x450")
+        center_window(self, 420, 450)
+        self.resizable(False, False)
         self.create_ui()
 
     def create_ui(self):
         frm = ttk.Frame(self, padding=12)
         frm.pack(fill="both", expand=True)
 
-        # Generator
+        # Input
         gen_box = ttk.LabelFrame(frm, text="Password Generator", padding=8)
         gen_box.pack(fill="x", pady=6)
 
@@ -87,31 +114,83 @@ class App(tk.Tk):
         self.v_sym = tk.BooleanVar(value=True)
         self.v_amb = tk.BooleanVar(value=True)
 
-        ttk.Checkbutton(gen_box, text="a-z", variable=self.v_lower).grid(row=1,column=0, sticky="w")
-        ttk.Checkbutton(gen_box, text="A-Z", variable=self.v_upper).grid(row=1,column=1, sticky="w")
-        ttk.Checkbutton(gen_box, text="0-9", variable=self.v_digits).grid(row=2,column=0, sticky="w")
-        ttk.Checkbutton(gen_box, text="symbols", variable=self.v_sym).grid(row=2,column=1, sticky="w")
-        ttk.Checkbutton(gen_box, text="หลีกเลี่ยงตัวกำกวม", variable=self.v_amb).grid(row=3,column=0,columnspan=2, sticky="w")
-
-        ttk.Button(gen_box, text="สร้าง", command=self.generate_password).grid(row=4,column=0,pady=8)
-        ttk.Button(gen_box, text="คัดลอก", command=self.copy_generated).grid(row=4,column=1,pady=8)
+        ttk.Checkbutton(gen_box, text="a-z", variable=self.v_lower).grid(row=1, column=0, sticky="w")
+        ttk.Checkbutton(gen_box, text="A-Z", variable=self.v_upper).grid(row=1, column=1, sticky="w")
+        ttk.Checkbutton(gen_box, text="0-9", variable=self.v_digits).grid(row=2, column=0, sticky="w")
+        ttk.Checkbutton(gen_box, text="symbols", variable=self.v_sym).grid(row=2, column=1, sticky="w")
+        ttk.Checkbutton(gen_box, text="หลีกเลี่ยงตัวกำกวม", variable=self.v_amb).grid(row=3, column=0, columnspan=2,
+                                                                                      sticky="w")
+        ttk.Button(gen_box, text="สร้าง", command=self.generate_password).grid(row=4, column=0, pady=8)
+        ttk.Button(gen_box, text="คัดลอก", command=self.copy_generated).grid(row=4, column=1, pady=8)
+        ttk.Button(gen_box, text="บันทึก", command=self.save_note_popup).grid(row=4, column=2, pady=8)
+        ttk.Button(gen_box, text="ประวัติ", command=self.open_history_window).grid(row=4, column=3, pady=8)
 
         # Output
         out_box = ttk.LabelFrame(frm, text="Password / Analysis", padding=8)
         out_box.pack(fill="both", expand=True, pady=6)
 
         self.generated_var = tk.StringVar()
-        ttk.Entry(out_box, textvariable=self.generated_var, font=("Consolas",12)).pack(fill="x", padx=6, pady=(0,6))
+        ttk.Entry(out_box, textvariable=self.generated_var, font=("Consolas", 12)).pack(fill="x", padx=6, pady=(0, 6))
 
-        ttk.Button(out_box, text="วิเคราะห์รหัสนี้", command=self.check_current_password).pack(padx=6,pady=6)
-        ttk.Button(out_box, text="Export เป็น .txt", command=self.export_password).pack(padx=6,pady=6)
+        ttk.Button(out_box, text="วิเคราะห์รหัสนี้", command=self.check_current_password).pack(padx=6, pady=6)
+        ttk.Button(out_box, text="Export เป็น .txt", command=self.export_password).pack(padx=6, pady=6)
 
         self.strength_var = tk.StringVar(value="Entropy: 0.00 bits • -")
         self.str_pb = ttk.Progressbar(out_box, maximum=100)
-        self.str_pb.pack(fill="x", padx=6, pady=(0,4))
+        self.str_pb.pack(fill="x", padx=6, pady=(0, 4))
         ttk.Label(out_box, textvariable=self.strength_var, anchor="e").pack(fill="x", padx=6)
 
-    # Actions
+        ttk.Button(self, text="Quit", command=self.destroy).pack(side='right', padx=12, pady=3)
+
+
+    def save_note_popup(self):
+        popup = tk.Toplevel(self)
+        popup.title("Add Note")
+        popup.geometry("300x200")
+        popup.resizable(False, False)
+
+        ttk.Label(popup, text="หมายเหตุ").pack(pady=10)
+        note_entry = tk.Text(popup, height=5, width=30)
+        note_entry.pack(pady=5)
+
+        def save_note():
+            note = note_entry.get("1.0", tk.END).strip()
+            messagebox.showinfo("Status", f"บันทึกสำเร็จ")
+            popup.destroy()
+
+            raw_data = ("555", note, "date")
+            history_data.append(raw_data)
+
+
+        ttk.Button(popup, text="บันทึก", command=save_note).pack(pady=10)
+
+    def open_history_window(self):
+        history_win = tk.Toplevel(self)
+        history_win.title("History")
+        history_win.geometry("550x300")
+        history_win.resizable(False, False)
+
+        ttk.Label(history_win, text="🔑 Password History", font=("Arial", 12, "bold")).pack(pady=10)
+
+        # Table
+        columns = ("password", "note", "created_at")
+        tree = ttk.Treeview(history_win, columns=columns, show="headings", height=8)
+        tree.pack(fill="both", expand=True, padx=10, pady=5)
+
+        tree.heading("password", text="รหัสผ่าน")
+        tree.heading("note", text="หมายเหตุ")
+        tree.heading("created_at", text="วันที่สร้าง")
+
+        tree.column("password", width=120)
+        tree.column("note", width=200)
+        tree.column("created_at", width=120)
+
+        for row in history_data:
+            tree.insert("", tk.END, values=row)
+
+        ttk.Button(history_win, text="Close", command=history_win.destroy).pack(pady=10)
+
+
     def generate_password(self):
         try:
             pw, pool = generate_password(
@@ -129,6 +208,7 @@ class App(tk.Tk):
         bits = entropy_bits(len(pw), len(set(pool)))
         self.update_strength_display(bits)
 
+
     def copy_generated(self):
         pw = self.generated_var.get().strip()
         if not pw:
@@ -139,6 +219,7 @@ class App(tk.Tk):
         self.update()
         messagebox.showinfo("Copied", "คัดลอกรหัสไปยังคลิปบอร์ดแล้ว")
 
+
     def check_current_password(self):
         pw = self.generated_var.get().strip()
         if not pw:
@@ -148,25 +229,29 @@ class App(tk.Tk):
         self.update_strength_display(res["entropy"])
         s = f"Entropy: {res['entropy']:.2f} bits\nStrength: {res['label']}\n\n"
         if res["issues"]:
-            s += "ปัญหา:\n" + "\n".join("- "+i for i in res["issues"]) + "\n\n"
+            s += "ปัญหา:\n" + "\n".join("- " + i for i in res["issues"]) + "\n\n"
         if res["recs"]:
-            s += "คำแนะนำ:\n" + "\n".join("- "+r for r in res["recs"])
+            s += "คำแนะนำ:\n" + "\n".join("- " + r for r in res["recs"])
         messagebox.showinfo("วิเคราะห์รหัส", s)
+
 
     def update_strength_display(self, bits):
         self.strength_var.set(f"Entropy: {bits:.2f} bits • {strength_label(bits)}")
-        self.str_pb["value"] = max(0,min(100,int(bits)))
+        self.str_pb["value"] = max(0, min(100, int(bits)))
+
 
     def export_password(self):
         pw = self.generated_var.get().strip()
         if not pw:
             messagebox.showinfo("Info", "ไม่มีรหัสให้ส่งออก")
             return
-        path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text file","*.txt")], initialfile=f"password_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
+        path = filedialog.asksaveasfilename(defaultextension=".txt", filetypes=[("Text file", "*.txt")],
+                                            initialfile=f"password_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
         if not path: return
-        with open(path,"w", encoding="utf-8") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(pw)
         messagebox.showinfo("Exported", f"บันทึกรหัสไปยัง {path}")
+
 
 if __name__ == "__main__":
     app = App()

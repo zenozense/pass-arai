@@ -16,7 +16,7 @@ def login(username_var, password_var):
     is_valid_user = zitttpymongo.is_exists_user(username,password)
     if is_valid_user:
         root.destroy()
-        subprocess.run(["python", "core.py"])
+        subprocess.run(["python", "core.py", username])
     else:
         # msg_label.config(text="Incorrect username or password.", fg="red")
         messagebox.showinfo("Info", "Incorrect username or password.")

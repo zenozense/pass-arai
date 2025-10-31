@@ -12,18 +12,18 @@ load_dotenv()
 mongo_string = os.getenv("url")
 client = MongoClient(mongo_string)
 database_1 = client["database1"]
-collection_log = database_1["log"]  
+collection_log = database_1["log"]
 collection_users = database_1["users"]
 
 #-----CRUD operation
 
 def create_register_user(username, password):
-    ''' 
-    save new register username with hashed password to MongoDB 
     '''
-    query = {"_id": username}
+    save new register username with hashed password to MongoDB
+    '''
+    query = {"username": username}
 
-    # check whether already registered or not 
+    # check whether already registered or not
     if collection_users.find_one(query):
         print(f"❌ Username {username} already exists.")
         return False
@@ -32,7 +32,7 @@ def create_register_user(username, password):
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password_bytes,salt)
     username_information = {
-        "_id" : username,
+        "username" : username,
         "password" : hashed_password,
         "created at": datetime.now(pytz.timezone("Asia/Bangkok"))
     }
@@ -44,7 +44,7 @@ def create_register_user(username, password):
 
 def is_exists_user(username,password):
     ''' Verify user's login credentials against the database '''
-    query = {"_id" : username}
+    query = {"username" : username}
     user_docment = collection_users.find_one(query)
 
     #check wether username exists in the Database
@@ -60,11 +60,11 @@ def is_exists_user(username,password):
     else :
         return False
 
-def save_new_generated_password(users, password, note="."):
+def save_new_generated_password(users, password, note=""):
     ''' save a new generated password to MongoDB '''
     new_password_and_note = {
         "username": users,
-        "generated password": password,
+        "generated_password": password,
         "note": note,
         "created at": datetime.now(pytz.timezone("Asia/Bangkok"))
     }
@@ -78,10 +78,10 @@ def get_all_logs_for_user(username):
     return list of dictionary that contain user's log informataion
     """
     query = {"username": username}
-    
+
     # find and sorted the information by lasted date
     logs_cursor = collection_log.find(query).sort("created at", -1)
-    
+
     print(f"✅ get all logs in formation for {username}")
     return list(logs_cursor)
 
@@ -94,12 +94,12 @@ def get_all_generated_passwords_for_user(username):
     projection = {"generated password": 1, "_id": 0}
     password_docs_cursor = collection_log.find(query, projection)
     password_list = [doc.get("generated password") for doc in password_docs_cursor]
-    
+
     if password_list:
         print(f"✅ Found {len(password_list)} generated password(s) for '{username}'.")
     else:
         print(f"❌ No generated passwords found for '{username}'.")
-        
+
     return password_list
 
 def update_note(log_id, new_note):
@@ -118,16 +118,16 @@ def delete_specific_generated_password(log_id):
     try:
         # convert string_id to object_id
         query = {"_id": ObjectId(log_id)}
-        
+
         result = collection_log.delete_one(query)
-        
+
         if result.deleted_count > 0:
             print(f"✅ Generated password with log ID '{log_id}' has been deleted.")
             return True
         else:
             print(f"❌ No generated password found with log ID '{log_id}'.")
             return False
-            
+
     except Exception as e:
         # if the form of log_id is incorrect
         print(f"An error occurred (invalid ID format likely): {e}")
