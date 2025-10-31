@@ -6,19 +6,15 @@ import math
 from datetime import datetime
 import sys
 from ui_utilities import center_window
+from database import zitttpymongo
+import pytz
 
 # ---------------- รับค่าจาก Subprocess ----------------
 if len(sys.argv) > 1:
     current_user = sys.argv[1]
 else:
-    current_user = None
-
-# ---------------- Global Declare ----------------
-history_data = [
-    ("Abc123!@", "My email login", "2025-10-31 15:00"),
-    ("Xyz456$%", "School portal", "2025-10-30 18:45"),
-    ("Qwe789@@", "Bank account", "2025-10-29 09:30"),
-]
+    print("test only !!!!!!!!!!!!!")
+    current_user = "haneen"
 
 # ---------------- Configs ----------------
 SYMBOLS = "!@#$%^&*+-_=?:/\\"
@@ -148,6 +144,8 @@ class App(tk.Tk):
         popup.title("Add Note")
         popup.geometry("300x200")
         popup.resizable(False, False)
+        popup.transient(self)
+        popup.grab_set()
 
         ttk.Label(popup, text="หมายเหตุ").pack(pady=10)
         note_entry = tk.Text(popup, height=5, width=30)
@@ -155,41 +153,125 @@ class App(tk.Tk):
 
         def save_note():
             note = note_entry.get("1.0", tk.END).strip()
-            messagebox.showinfo("Status", f"บันทึกสำเร็จ")
-            popup.destroy()
+            password = self.generated_var.get().strip()
+            user = current_user
 
-            raw_data = ("555", note, "date")
-            history_data.append(raw_data)
+            if not password:
+                messagebox.showerror("Error", "ไม่มีรหัสผ่านให้บันทึก", parent=popup)
+                return
+            if not user:
+                messagebox.showerror("Error", "ไม่พบข้อมูลผู้ใช้ (User not found)", parent=popup)
+                return
 
+            try:
+                inserted_id = zitttpymongo.save_new_generated_password(
+                    users=user,
+                    password=password,
+                    note=note
+                )
+
+                if inserted_id:
+
+                    messagebox.showinfo("Status", "บันทึกรหัสผ่านสำเร็จ", parent=popup)
+                    popup.destroy()
+                else:
+                    messagebox.showwarning("Warning", "ไม่สามารถบันทึกไปยังฐานข้อมูลได้", parent=popup)
+
+            except Exception as e:
+                messagebox.showerror("Database Error", f"เกิดข้อผิดพลาดในการเชื่อมต่อ: {e}", parent=popup)
+                print(f"Error saving to DB: {e}")
 
         ttk.Button(popup, text="บันทึก", command=save_note).pack(pady=10)
 
     def open_history_window(self):
         history_win = tk.Toplevel(self)
-        history_win.title("History")
+        history_win.title(f"History for {current_user}")
         history_win.geometry("550x300")
         history_win.resizable(False, False)
 
-        ttk.Label(history_win, text="🔑 Password History", font=("Arial", 12, "bold")).pack(pady=10)
+        history_win.transient(self)
+        history_win.grab_set()
 
-        # Table
+        ttk.Label(history_win, text=f"🔑 Password History ({current_user})", font=("Arial", 12, "bold")).pack(pady=10)
+
         columns = ("password", "note", "created_at")
         tree = ttk.Treeview(history_win, columns=columns, show="headings", height=8)
         tree.pack(fill="both", expand=True, padx=10, pady=5)
-
         tree.heading("password", text="รหัสผ่าน")
         tree.heading("note", text="หมายเหตุ")
         tree.heading("created_at", text="วันที่สร้าง")
-
-        tree.column("password", width=120)
+        tree.column("password", width=120, anchor="center")
         tree.column("note", width=200)
-        tree.column("created_at", width=120)
+        tree.column("created_at", width=140, anchor="center")
 
-        for row in history_data:
-            tree.insert("", tk.END, values=row)
+        local_tz = pytz.timezone("Asia/Bangkok")
+        utc_tz = pytz.timezone("UTC")
+
+        if not current_user:
+            messagebox.showerror("Error", "ไม่พบผู้ใช้งาน (No user logged in)", parent=history_win)
+            history_win.destroy()
+            return
+
+        try:
+            all_logs = zitttpymongo.get_all_logs_for_user(current_user)
+            tree.delete(*tree.get_children())
+            if not all_logs:
+                tree.insert("", tk.END, values=("(ยังไม่มีข้อมูล)", "", ""))
+            else:
+                for log in all_logs:
+                    password = log.get("generated_password", "N/A")
+                    note = log.get("note", "")
+                    created_at_dt = log.get("created at")
+                    formatted_date = "N/A"
+                    if created_at_dt:
+                        aware_utc_dt = created_at_dt.replace(tzinfo=utc_tz)
+                        local_dt = aware_utc_dt.astimezone(local_tz) 
+                        formatted_date = local_dt.strftime("%Y-%m-%d %H:%M:%S")
+                    values = (password, note, formatted_date)
+                    tree.insert("", tk.END, values=values)
+        
+        except Exception as e:
+            messagebox.showerror("Database Error", f"ไม่สามารถดึงข้อมูลประวัติได้: {e}", parent=history_win)
+            print(f"Error fetching history: {e}")
+
+
+        def copy_to_clipboard(password_to_copy):
+            try:
+                history_win.clipboard_clear()
+                history_win.clipboard_append(password_to_copy)
+                history_win.update() 
+                print(f"Copied '{password_to_copy}' to clipboard.")
+            except tk.TclError:
+                print("Clipboard error. Maybe the window was closed?")
+
+
+        def on_right_click(event):
+            item_id = tree.identify_row(event.y)
+            if not item_id:
+                return 
+            column_id_str = tree.identify_column(event.x)
+            
+            if column_id_str == "#1":
+                password = tree.item(item_id, "values")[0]
+                if password == "(ยังไม่มีข้อมูล)": return
+
+                popup_menu = tk.Menu(history_win, tearoff=0)
+                popup_menu.add_command(
+                    label=f"Copy '{password[:10]}...'",
+                    command=lambda: copy_to_clipboard(password)
+                )
+                popup_menu.post(event.x_root, event.y_root)
+
+        # button for Linux/Windows
+        tree.bind("<Button-3>", on_right_click)
+        
+        # button for mac mouse 
+        tree.bind("<Button-2>", on_right_click) 
+        
+        # button for mac trakcpad
+        tree.bind("<Control-Button-1>", on_right_click)
 
         ttk.Button(history_win, text="Close", command=history_win.destroy).pack(pady=10)
-
 
     def generate_password(self):
         try:

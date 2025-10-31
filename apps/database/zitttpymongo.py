@@ -34,7 +34,7 @@ def create_register_user(username, password):
     username_information = {
         "username" : username,
         "password" : hashed_password,
-        "created at": datetime.now(pytz.timezone("Asia/Bangkok"))
+        "created_at": datetime.now(pytz.timezone("Asia/Bangkok"))
     }
 
     result = collection_users.insert_one(username_information)
@@ -83,7 +83,7 @@ def get_all_logs_for_user(username):
     logs_cursor = collection_log.find(query).sort("created at", -1)
 
     print(f"✅ get all logs in formation for {username}")
-    return list(logs_cursor)
+
 
 def get_all_generated_passwords_for_user(username):
     '''
