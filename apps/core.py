@@ -14,7 +14,7 @@ if len(sys.argv) > 1:
     current_user = sys.argv[1]
 else:
     print("test only !!!!!!!!!!!!!")
-    current_user = "haneen"
+    current_user = "yasit"
 
 # ---------------- Configs ----------------
 SYMBOLS = "!@#$%^&*+-_=?:/\\"
@@ -151,7 +151,7 @@ class App(tk.Tk):
         note_entry = tk.Text(popup, height=5, width=30)
         note_entry.pack(pady=5)
 
-        def save_note():
+        def save_note_and_password():
             note = note_entry.get("1.0", tk.END).strip()
             password = self.generated_var.get().strip()
             user = current_user
@@ -181,12 +181,12 @@ class App(tk.Tk):
                 messagebox.showerror("Database Error", f"เกิดข้อผิดพลาดในการเชื่อมต่อ: {e}", parent=popup)
                 print(f"Error saving to DB: {e}")
 
-        ttk.Button(popup, text="บันทึก", command=save_note).pack(pady=10)
+        ttk.Button(popup, text="บันทึก", command=save_note_and_password).pack(pady=10)
 
     def open_history_window(self):
         history_win = tk.Toplevel(self)
         history_win.title(f"History for {current_user}")
-        history_win.geometry("550x300")
+        history_win.geometry("550x350")
         history_win.resizable(False, False)
 
         history_win.transient(self)
@@ -197,12 +197,16 @@ class App(tk.Tk):
         columns = ("password", "note", "created_at")
         tree = ttk.Treeview(history_win, columns=columns, show="headings", height=8)
         tree.pack(fill="both", expand=True, padx=10, pady=5)
+
         tree.heading("password", text="รหัสผ่าน")
         tree.heading("note", text="หมายเหตุ")
         tree.heading("created_at", text="วันที่สร้าง")
+
         tree.column("password", width=120, anchor="center")
         tree.column("note", width=200)
         tree.column("created_at", width=140, anchor="center")
+
+        tree_id_map = {}
 
         local_tz = pytz.timezone("Asia/Bangkok")
         utc_tz = pytz.timezone("UTC")
@@ -227,8 +231,11 @@ class App(tk.Tk):
                         aware_utc_dt = created_at_dt.replace(tzinfo=utc_tz)
                         local_dt = aware_utc_dt.astimezone(local_tz) 
                         formatted_date = local_dt.strftime("%Y-%m-%d %H:%M:%S")
+
                     values = (password, note, formatted_date)
-                    tree.insert("", tk.END, values=values)
+
+                    item_id = tree.insert("", tk.END, values=values)
+                    tree_id_map[item_id] = log.get("_id")
         
         except Exception as e:
             messagebox.showerror("Database Error", f"ไม่สามารถดึงข้อมูลประวัติได้: {e}", parent=history_win)
@@ -264,14 +271,144 @@ class App(tk.Tk):
 
         # button for Linux/Windows
         tree.bind("<Button-3>", on_right_click)
-        
+
         # button for mac mouse 
         tree.bind("<Button-2>", on_right_click) 
-        
+
         # button for mac trakcpad
         tree.bind("<Control-Button-1>", on_right_click)
 
-        ttk.Button(history_win, text="Close", command=history_win.destroy).pack(pady=10)
+
+        def delete_selected_log():
+            selected_items = tree.selection()
+
+            if not selected_items:
+                messagebox.showwarning("No Selection", "กรุณาเลือกแถวที่ต้องการลบ", parent=history_win)
+                return
+            item_id = selected_items[0]
+            log_id_to_delete = tree_id_map.get(item_id)
+            
+            if not log_id_to_delete:
+                messagebox.showerror("Error", "ไม่พบ ID ของข้อมูลนี้", parent=history_win)
+                return
+
+            password_to_show = tree.item(item_id, "values")[0]
+            if not messagebox.askyesno("ยืนยันการลบ", 
+                                      f"คุณแน่ใจหรือว่าต้องการลบ:\n\n'{password_to_show}'\n\n(การกระทำนี้ไม่สามารถย้อนกลับได้)", 
+                                      parent=history_win):
+                return
+
+            try:
+                success = zitttpymongo.delete_specific_generated_password(str(log_id_to_delete))
+                
+                if success:
+                    tree.delete(item_id)
+                    del tree_id_map[item_id]
+                    print(f"Deleted log {log_id_to_delete}")
+                else:
+                    messagebox.showerror("Delete Failed", "ไม่สามารถลบข้อมูลออกจากฐานข้อมูลได้", parent=history_win)
+            
+            except Exception as e:
+                messagebox.showerror("Database Error", f"เกิดข้อผิดพลาดขณะลบ: {e}", parent=history_win)
+
+        button_frame = ttk.Frame(history_win)
+        button_frame.pack(fill="x", padx=10, pady=(5, 10))
+
+
+        def open_edit_note_popup(item_id, log_id, current_note):
+            popup = tk.Toplevel(history_win)
+            popup.title("Edit Note")
+            popup.geometry("300x200")
+            popup.resizable(False, False)
+
+            popup.transient(history_win)
+            popup.grab_set()
+
+            ttk.Label(popup, text="แก้ไขหมายเหตุ:").pack(pady=10, padx=10)
+            note_text = tk.Text(popup, height=5, width=35)
+            note_text.pack(pady=5, padx=10, fill="x", expand=True)
+
+            note_text.insert("1.0", current_note)
+
+            def save_new_note():
+                new_note = note_text.get("1.0", tk.END).strip()
+
+                try:
+                    modified_count = zitttpymongo.update_note(log_id, new_note)
+                    
+                    if modified_count > 0:
+
+                        current_values = list(tree.item(item_id, "values"))
+                        current_values[1] = new_note
+                        tree.item(item_id, values=tuple(current_values))
+                        
+                        print(f"Updated note for {log_id}")
+                        popup.destroy()
+                    else:
+                        messagebox.showwarning("No Change", "ไม่สามารถอัปเดตโน้ตได้ (หรือข้อมูลเหมือนเดิม)", parent=popup)
+                
+                except Exception as e:
+                    messagebox.showerror("Database Error", f"เกิดข้อผิดพลาดขณะอัปเดต: {e}", parent=popup)
+
+            ttk.Button(popup, text="บันทึก", command=save_new_note).pack(pady=10)
+
+
+        def on_double_click(event):
+            item_id = tree.identify_row(event.y)
+            if not item_id: return
+
+            column_id_str = tree.identify_column(event.x)
+
+            if column_id_str == "#2":
+                log_id = tree_id_map.get(item_id)
+                current_note = tree.item(item_id, "values")[1]
+                
+                if log_id:
+                    open_edit_note_popup(item_id, log_id, current_note)
+                else:
+                    print(f"Could not find log_id for item {item_id}")
+
+        tree.bind("<Double-1>", on_double_click)
+
+        def edit_selected_log():
+            selected_items = tree.selection()
+
+            if not selected_items:
+                messagebox.showwarning("No Selection", "กรุณาเลือกแถวที่ต้องการแก้ไข", parent=history_win)
+                return
+
+            item_id = selected_items[0]
+            log_id = tree_id_map.get(item_id)
+
+            if not log_id:
+                messagebox.showerror("Error", "ไม่พบ ID ของข้อมูลนี้", parent=history_win)
+                return
+
+            current_note = tree.item(item_id, "values")[1] 
+
+            open_edit_note_popup(item_id, log_id, current_note)
+
+        button_frame = ttk.Frame(history_win)
+        button_frame.pack(fill="x", padx=10, pady=(5, 10))
+
+        ttk.Button(
+            button_frame, 
+            text="Close", 
+            command=history_win.destroy
+        ).pack(side="right")
+
+        ttk.Button(
+            button_frame, 
+            text="ลบรหัสที่เลือก(Delete)", 
+            command=delete_selected_log
+        ).pack(side="right", padx=(0, 5))
+
+        ttk.Button(
+            button_frame, 
+            text="แก้ไขโน้ต (Edit)", 
+            command=edit_selected_log
+        ).pack(side="right")
+
 
     def generate_password(self):
         try:
