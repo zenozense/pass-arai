@@ -136,7 +136,8 @@ class App(tk.Tk):
         self.str_pb.pack(fill="x", padx=6, pady=(0, 4))
         ttk.Label(out_box, textvariable=self.strength_var, anchor="e").pack(fill="x", padx=6)
 
-        ttk.Button(self, text="Quit", command=self.destroy).pack(side='right', padx=12, pady=3)
+        #ttk.Button(self, text="Quit", command=self.destroy).pack(side='right', padx=12, pady=3)
+        ttk.Button(self, text="Logout", command=self.destroy).pack(side='right', pady=3)
 
 
     def save_note_popup(self):
