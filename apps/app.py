@@ -1,24 +1,185 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from database import db
 import secrets
 import string
 import math
 from datetime import datetime
-import sys
-from ui_utilities import center_window
-from database import zitttpymongo
 import pytz
 
-# ---------------- รับค่าจาก Subprocess ----------------
-if len(sys.argv) > 1:
-    current_user = sys.argv[1]
-else:
-    print("test only !!!!!!!!!!!!!")
-    current_user = "yasit"
+# ---------- Global Functions ----------
+def center_window(window, width, height): # 450, 230
+    screen_w = window.winfo_screenwidth()
+    screen_h = window.winfo_screenheight()
+    x = (screen_w - width) // 2
+    y = (screen_h - height) // 2
+    window.geometry(f"{width}x{height}+{x}+{y}")
+
+def toggle_password(entry, var):
+    entry.config(show="" if var.get() else "*")
+
+def login(root, username_var, password_var):
+    username = username_var.get()
+    password = password_var.get()
+
+    is_valid_user = db.is_exists_user(username, password)
+    if is_valid_user:
+        root.destroy()
+        app = App(username)
+        app.mainloop()
+    else:
+        messagebox.showinfo("Info", "Incorrect username or password.")
+
+def open_register(root):
+    root.destroy()
+    register_root = create_register_ui()
+    register_root.mainloop()
+
+def create_login_ui(root):
+    center_window(root, 450, 230)
+    root.title("เข้าสู่ระบบ")
+    root.resizable(False, False)
+
+    frame = tk.Frame(root)
+    frame.pack(expand=True)
+
+    # ---------- Labels ----------
+    tk.Label(frame, text="Username").grid(row=0, column=0, padx=10, pady=10, sticky="e")
+    tk.Label(frame, text="Password").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+
+    # ---------- User Input ----------
+    username_var = tk.StringVar()
+    password_var = tk.StringVar()
+
+    username_entry = tk.Entry(frame, textvariable=username_var, width=22)
+    password_entry = tk.Entry(frame, textvariable=password_var, width=22, show="*")
+
+    username_entry.grid(row=0, column=1, padx=5, pady=10)
+    password_entry.grid(row=1, column=1, padx=5, pady=5)
+
+    # ---------- Show Password ----------
+    show_var = tk.BooleanVar(value=False)
+    tk.Checkbutton(
+        frame, text="แสดงรหัสผ่าน", variable=show_var,
+        command=lambda: toggle_password(password_entry, show_var)
+    ).grid(row=2, column=1, sticky="w", padx=5)
+
+    # ---------- Register / Login Buttons ----------
+    btn_row = tk.Frame(frame)
+    btn_row.grid(row=4, column=0, columnspan=2, pady=5)
+
+    tk.Button(
+        btn_row, text="เข้าสู่ระบบ", width=10,
+        command=lambda: login(root, username_var, password_var)
+    ).pack(side="left", padx=6)
+
+    tk.Button(
+        btn_row, text="ลงทะเบียน", width=10,
+        command=lambda: open_register(root)
+    ).pack(side="left", padx=6)
+
+    # Trigger ปุ่ม Login
+    root.bind("<Return>", lambda e: login(root, username_var, password_var))
+    username_entry.focus()
+
+def create_register_ui():
+    root = tk.Tk()
+    root.title("ลงทะเบียน")
+    center_window(root, 475, 250)
+    root.resizable(False, False)
+
+    # ---------- Wrapper ----------
+    wrap = ttk.Frame(root, padding=20)
+    wrap.place(relx=0.5, rely=0.5, anchor="center")
+
+    card = ttk.Frame(wrap, padding=10)
+    card.pack()
+
+    # ---------- Variables ----------
+    username = tk.StringVar()
+    password1 = tk.StringVar()
+    password2 = tk.StringVar()
+    password_visible = tk.BooleanVar(value=False)
+    message = tk.StringVar(value="")
+
+    # ---------- Form ----------
+    row = 0
+    ttk.Label(card, text="Username").grid(row=row, column=0, padx=8, pady=6, sticky="e")
+    ttk.Entry(card, textvariable=username, width=28).grid(row=row, column=1, padx=8, pady=6);
+    row += 1
+
+    ttk.Label(card, text="Password").grid(row=row, column=0, padx=8, pady=6, sticky="e")
+    e_p1 = ttk.Entry(card, textvariable=password1, width=28, show="*")
+    e_p1.grid(row=row, column=1, padx=8, pady=6);
+    row += 1
+
+    ttk.Label(card, text="Password (Verify)").grid(row=row, column=0, padx=8, pady=6, sticky="e")
+    e_p2 = ttk.Entry(card, textvariable=password2, width=28, show="*")
+    e_p2.grid(row=row, column=1, padx=8, pady=6);
+    row += 1
+
+    # ---------- FunctionsFunctions ----------
+    def set_message(msg, color="#c62828"):
+        message.set(msg)
+        text_label.configure(foreground=color)
+
+    def toggle_show():
+        show = "" if password_visible.get() else "*"
+        e_p1.config(show=show)
+        e_p2.config(show=show)
+
+    def back():
+        root.destroy()
+        main()
+
+    def save():
+        u, p1, p2 = username.get().strip(), password1.get(), password2.get()
+
+        if not all([u, p1, p2]):
+            return set_message("Please fill all fields.")
+        if len(p1) < 8:
+            return set_message("Password must be at least 8 characters.")
+        if p1 != p2:
+            return set_message("Passwords do not match.")
+        if len(u) < 3:
+            return set_message("Username must be at least 3 characters.")
+
+        if not db.create_register_user(u, p1):
+            return set_message(f"Username '{u}' already exists.")
+        set_message("Registered successfully", "#2e7d32")
+
+    # ---------- Check Buttons ----------
+    ttk.Checkbutton(
+        card,
+        text="แสดงรหัสผ่าน",
+        variable=password_visible,
+        command=toggle_show
+    ).grid(row=row, column=1, sticky="w", padx=8);
+    row += 1
+
+    # ---------- Message ----------
+    text_label = ttk.Label(card, textvariable=message, foreground="#c62828")
+    text_label.grid(row=row, column=0, columnspan=2, pady=(2, 6));
+    row += 1
+
+    # ---------- Buttons ----------
+    btns = ttk.Frame(card)
+    btns.grid(row=row, column=1, columnspan=2, pady=6)
+    ttk.Button(btns, text="ย้อนกลับ", width=6, command=back).pack(side="left", padx=6)
+
+    btns.grid(row=row, column=0, columnspan=2, pady=0)
+    ttk.Button(btns, text="บันทึก", width=6, command=save).pack(side="left", padx=0)
+
+    # ---------- Focus & Bind ----------
+    card.grid_slaves(row=0, column=1)[0].focus()
+    root.bind("<Return>", lambda e: save())
+
+    return root
 
 # ---------------- Configs ----------------
 SYMBOLS = "!@#$%^&*+-_=?:/\\"
 AMBITUOUS = set("Il1O0`'\"[]{}()<>~,.;:")
+
 
 # ---------------- Pass gen & strength ----------------
 def build_pool(use_lower, use_upper, use_digits, use_symbols, avoid_amb):
@@ -85,8 +246,9 @@ def analyze_password(pw):
 
 # ---------------- UI ----------------
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self, username):
         super().__init__()
+        self.current_user = username
         self.title("Password Generator & Checker")
         center_window(self, 420, 450)
         self.resizable(False, False)
@@ -96,7 +258,7 @@ class App(tk.Tk):
         frm = ttk.Frame(self, padding=12)
         frm.pack(fill="both", expand=True)
 
-        # Input
+        # ---------- Input ----------
         gen_box = ttk.LabelFrame(frm, text="Password Generator", padding=8)
         gen_box.pack(fill="x", pady=6)
 
@@ -121,7 +283,7 @@ class App(tk.Tk):
         ttk.Button(gen_box, text="บันทึก", command=self.save_note_popup).grid(row=4, column=2, pady=8)
         ttk.Button(gen_box, text="ประวัติ", command=self.open_history_window).grid(row=4, column=3, pady=8)
 
-        # Output
+        # ---------- Output ----------
         out_box = ttk.LabelFrame(frm, text="Password / Analysis", padding=8)
         out_box.pack(fill="both", expand=True, pady=6)
 
@@ -136,8 +298,11 @@ class App(tk.Tk):
         self.str_pb.pack(fill="x", padx=6, pady=(0, 4))
         ttk.Label(out_box, textvariable=self.strength_var, anchor="e").pack(fill="x", padx=6)
 
-        ttk.Button(self, text="Quit", command=self.destroy).pack(side='right', padx=12, pady=3)
+        ttk.Button(self, text="Logout", command=self.logout).pack(side='right', pady=3)
 
+    def logout(self):
+        self.destroy()
+        main()
 
     def save_note_popup(self):
         popup = tk.Toplevel(self)
@@ -154,7 +319,7 @@ class App(tk.Tk):
         def save_note_and_password():
             note = note_entry.get("1.0", tk.END).strip()
             password = self.generated_var.get().strip()
-            user = current_user
+            user = self.current_user
 
             if not password:
                 messagebox.showerror("Error", "ไม่มีรหัสผ่านให้บันทึก", parent=popup)
@@ -164,7 +329,7 @@ class App(tk.Tk):
                 return
 
             try:
-                inserted_id = zitttpymongo.save_new_generated_password(
+                inserted_id = db.save_new_generated_password(
                     users=user,
                     password=password,
                     note=note
@@ -185,14 +350,15 @@ class App(tk.Tk):
 
     def open_history_window(self):
         history_win = tk.Toplevel(self)
-        history_win.title(f"History for {current_user}")
+        history_win.title(f"History for {self.current_user}")
         history_win.geometry("550x350")
         history_win.resizable(False, False)
 
         history_win.transient(self)
         history_win.grab_set()
 
-        ttk.Label(history_win, text=f"🔑 Password History ({current_user})", font=("Arial", 12, "bold")).pack(pady=10)
+        ttk.Label(history_win, text=f"🔑 Password History ({self.current_user})", font=("Arial", 12, "bold")).pack(
+            pady=10)
 
         columns = ("password", "note", "created_at")
         tree = ttk.Treeview(history_win, columns=columns, show="headings", height=8)
@@ -211,13 +377,13 @@ class App(tk.Tk):
         local_tz = pytz.timezone("Asia/Bangkok")
         utc_tz = pytz.timezone("UTC")
 
-        if not current_user:
+        if not self.current_user:
             messagebox.showerror("Error", "ไม่พบผู้ใช้งาน (No user logged in)", parent=history_win)
             history_win.destroy()
             return
 
         try:
-            all_logs = zitttpymongo.get_all_logs_for_user(current_user)
+            all_logs = db.get_all_logs_for_user(self.current_user)
             tree.delete(*tree.get_children())
             if not all_logs:
                 tree.insert("", tk.END, values=("(ยังไม่มีข้อมูล)", "", ""))
@@ -229,35 +395,33 @@ class App(tk.Tk):
                     formatted_date = "N/A"
                     if created_at_dt:
                         aware_utc_dt = created_at_dt.replace(tzinfo=utc_tz)
-                        local_dt = aware_utc_dt.astimezone(local_tz) 
+                        local_dt = aware_utc_dt.astimezone(local_tz)
                         formatted_date = local_dt.strftime("%Y-%m-%d %H:%M:%S")
 
                     values = (password, note, formatted_date)
 
                     item_id = tree.insert("", tk.END, values=values)
                     tree_id_map[item_id] = log.get("_id")
-        
+
         except Exception as e:
             messagebox.showerror("Database Error", f"ไม่สามารถดึงข้อมูลประวัติได้: {e}", parent=history_win)
             print(f"Error fetching history: {e}")
-
 
         def copy_to_clipboard(password_to_copy):
             try:
                 history_win.clipboard_clear()
                 history_win.clipboard_append(password_to_copy)
-                history_win.update() 
+                history_win.update()
                 print(f"Copied '{password_to_copy}' to clipboard.")
             except tk.TclError:
                 print("Clipboard error. Maybe the window was closed?")
 
-
         def on_right_click(event):
             item_id = tree.identify_row(event.y)
             if not item_id:
-                return 
+                return
             column_id_str = tree.identify_column(event.x)
-            
+
             if column_id_str == "#1":
                 password = tree.item(item_id, "values")[0]
                 if password == "(ยังไม่มีข้อมูล)": return
@@ -269,15 +433,14 @@ class App(tk.Tk):
                 )
                 popup_menu.post(event.x_root, event.y_root)
 
-        # button for Linux/Windows
+        # Detect ของ Linux/Windows
         tree.bind("<Button-3>", on_right_click)
 
-        # button for mac mouse 
-        tree.bind("<Button-2>", on_right_click) 
+        # Detect ของ Mac
+        tree.bind("<Button-2>", on_right_click)
 
-        # button for mac trakcpad
+        # Detect Trackpad
         tree.bind("<Control-Button-1>", on_right_click)
-
 
         def delete_selected_log():
             selected_items = tree.selection()
@@ -287,33 +450,32 @@ class App(tk.Tk):
                 return
             item_id = selected_items[0]
             log_id_to_delete = tree_id_map.get(item_id)
-            
+
             if not log_id_to_delete:
                 messagebox.showerror("Error", "ไม่พบ ID ของข้อมูลนี้", parent=history_win)
                 return
 
             password_to_show = tree.item(item_id, "values")[0]
-            if not messagebox.askyesno("ยืนยันการลบ", 
-                                      f"คุณแน่ใจหรือว่าต้องการลบ:\n\n'{password_to_show}'\n\n(การกระทำนี้ไม่สามารถย้อนกลับได้)", 
-                                      parent=history_win):
+            if not messagebox.askyesno("ยืนยันการลบ",
+                                       f"คุณแน่ใจหรือว่าต้องการลบ:\n\n'{password_to_show}'\n\n(การกระทำนี้ไม่สามารถย้อนกลับได้)",
+                                       parent=history_win):
                 return
 
             try:
-                success = zitttpymongo.delete_specific_generated_password(str(log_id_to_delete))
-                
+                success = db.delete_specific_generated_password(str(log_id_to_delete))
+
                 if success:
                     tree.delete(item_id)
                     del tree_id_map[item_id]
                     print(f"Deleted log {log_id_to_delete}")
                 else:
                     messagebox.showerror("Delete Failed", "ไม่สามารถลบข้อมูลออกจากฐานข้อมูลได้", parent=history_win)
-            
+
             except Exception as e:
                 messagebox.showerror("Database Error", f"เกิดข้อผิดพลาดขณะลบ: {e}", parent=history_win)
 
         button_frame = ttk.Frame(history_win)
         button_frame.pack(fill="x", padx=10, pady=(5, 10))
-
 
         def open_edit_note_popup(item_id, log_id, current_note):
             popup = tk.Toplevel(history_win)
@@ -334,24 +496,24 @@ class App(tk.Tk):
                 new_note = note_text.get("1.0", tk.END).strip()
 
                 try:
-                    modified_count = zitttpymongo.update_note(log_id, new_note)
-                    
+                    modified_count = db.update_note(log_id, new_note)
+
                     if modified_count > 0:
 
                         current_values = list(tree.item(item_id, "values"))
                         current_values[1] = new_note
                         tree.item(item_id, values=tuple(current_values))
-                        
+
                         print(f"Updated note for {log_id}")
                         popup.destroy()
                     else:
-                        messagebox.showwarning("No Change", "ไม่สามารถอัปเดตโน้ตได้ (หรือข้อมูลเหมือนเดิม)", parent=popup)
-                
+                        messagebox.showwarning("No Change", "ไม่สามารถอัปเดตโน้ตได้ (หรือข้อมูลเหมือนเดิม)",
+                                               parent=popup)
+
                 except Exception as e:
                     messagebox.showerror("Database Error", f"เกิดข้อผิดพลาดขณะอัปเดต: {e}", parent=popup)
 
             ttk.Button(popup, text="บันทึก", command=save_new_note).pack(pady=10)
-
 
         def on_double_click(event):
             item_id = tree.identify_row(event.y)
@@ -362,7 +524,7 @@ class App(tk.Tk):
             if column_id_str == "#2":
                 log_id = tree_id_map.get(item_id)
                 current_note = tree.item(item_id, "values")[1]
-                
+
                 if log_id:
                     open_edit_note_popup(item_id, log_id, current_note)
                 else:
@@ -384,7 +546,7 @@ class App(tk.Tk):
                 messagebox.showerror("Error", "ไม่พบ ID ของข้อมูลนี้", parent=history_win)
                 return
 
-            current_note = tree.item(item_id, "values")[1] 
+            current_note = tree.item(item_id, "values")[1]
 
             open_edit_note_popup(item_id, log_id, current_note)
 
@@ -392,23 +554,22 @@ class App(tk.Tk):
         button_frame.pack(fill="x", padx=10, pady=(5, 10))
 
         ttk.Button(
-            button_frame, 
-            text="Close", 
+            button_frame,
+            text="Close",
             command=history_win.destroy
         ).pack(side="right")
 
         ttk.Button(
-            button_frame, 
-            text="ลบรหัสที่เลือก(Delete)", 
+            button_frame,
+            text="ลบรหัสที่เลือก(Delete)",
             command=delete_selected_log
         ).pack(side="right", padx=(0, 5))
 
         ttk.Button(
-            button_frame, 
-            text="แก้ไขโน้ต (Edit)", 
+            button_frame,
+            text="แก้ไขโน้ต (Edit)",
             command=edit_selected_log
         ).pack(side="right")
-
 
     def generate_password(self):
         try:
@@ -427,7 +588,6 @@ class App(tk.Tk):
         bits = entropy_bits(len(pw), len(set(pool)))
         self.update_strength_display(bits)
 
-
     def copy_generated(self):
         pw = self.generated_var.get().strip()
         if not pw:
@@ -437,7 +597,6 @@ class App(tk.Tk):
         self.clipboard_append(pw)
         self.update()
         messagebox.showinfo("Copied", "คัดลอกรหัสไปยังคลิปบอร์ดแล้ว")
-
 
     def check_current_password(self):
         pw = self.generated_var.get().strip()
@@ -453,11 +612,9 @@ class App(tk.Tk):
             s += "คำแนะนำ:\n" + "\n".join("- " + r for r in res["recs"])
         messagebox.showinfo("วิเคราะห์รหัส", s)
 
-
     def update_strength_display(self, bits):
         self.strength_var.set(f"Entropy: {bits:.2f} bits • {strength_label(bits)}")
         self.str_pb["value"] = max(0, min(100, int(bits)))
-
 
     def export_password(self):
         pw = self.generated_var.get().strip()
@@ -471,7 +628,10 @@ class App(tk.Tk):
             f.write(pw)
         messagebox.showinfo("Exported", f"บันทึกรหัสไปยัง {path}")
 
+def main():
+    root = tk.Tk()
+    create_login_ui(root)
+    root.mainloop()
 
 if __name__ == "__main__":
-    app = App()
-    app.mainloop()
+    main()
