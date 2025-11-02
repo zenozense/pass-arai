@@ -9,10 +9,10 @@ load_dotenv()
 
 # ---------------- Connect Section ----------------
 
-mongo_string = os.getenv("url")
-database_string = os.getenv("database")
-log_collection = os.getenv("collection_1")
-user_collection = os.getenv("collection_2")
+mongo_string = os.getenv("URL")
+database_string = os.getenv("DATABASE")
+log_collection = os.getenv("COLLECTION_1")
+user_collection = os.getenv("COLLECTION_2")
 
 client = MongoClient(mongo_string)
 database_1 = client[database_string]
