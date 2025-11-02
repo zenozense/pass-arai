@@ -1,10 +1,14 @@
+altgraph==0.17.4
 bcrypt==5.0.0
 dnspython==2.8.0
 dotenv==0.9.9
+macholib==1.16.3
+packaging==25.0
+pyinstaller==6.16.0
+pyinstaller-hooks-contrib==2025.9
 pymongo==4.15.2
 python-dotenv==1.1.1
 pytz==2025.2
 setuptools==78.1.1
 tk==0.1.0
 wheel==0.45.1
-pyinstaller~=6.16.0
