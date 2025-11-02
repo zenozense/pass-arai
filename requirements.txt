@@ -7,3 +7,4 @@ pytz==2025.2
 setuptools==78.1.1
 tk==0.1.0
 wheel==0.45.1
+pyinstaller~=6.16.0
