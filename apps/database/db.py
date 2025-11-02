@@ -7,15 +7,19 @@ from bson.objectid import ObjectId
 from dotenv import load_dotenv
 load_dotenv()
 
-# ----------------connect section----------------
+# ---------------- Connect Section ----------------
 
 mongo_string = os.getenv("url")
-client = MongoClient(mongo_string)
-database_1 = client["database1"]
-collection_log = database_1["log"]
-collection_users = database_1["users"]
+database_string = os.getenv("database")
+log_collection = os.getenv("collection_1")
+user_collection = os.getenv("collection_2")
 
-# ----------------CRUD operation----------------
+client = MongoClient(mongo_string)
+database_1 = client[database_string]
+collection_log = database_1[log_collection]
+collection_users = database_1[user_collection]
+
+# ---------------- CRUD Operation ----------------
 
 def create_register_user(username, password):
     query = {"username": username}
